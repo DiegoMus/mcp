@@ -1,0 +1,5 @@
+#PROCESOS DE INSTALACIÓN
+
+##REVISIÓN DE CODIGO
+
+1. ``npm install``
