@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "es2020",                       /* Versión de JavaScript a la que se compila */
+    "module": "commonjs",                     /* Sistema de módulos a usar (compatible con Node) */
+    "rootDir": "./",                          /* Directorio raíz de los archivos de entrada .ts */
+    "outDir": "./dist",                       /* Directorio de salida para los archivos .js compilados */
+    "esModuleInterop": true,                  /* Permite interoperabilidad entre CommonJS y ES Modules */
+    "forceConsistentCasingInFileNames": true, /* Asegura que los nombres de archivo se usen consistentemente */
+    "strict": true,                           /* Habilita todas las opciones de chequeo de tipos estrictos */
+    "skipLibCheck": true                      /* Omite la verificación de tipos en archivos de declaración (.d.ts) */
+  }
+}
+

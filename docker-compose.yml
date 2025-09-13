@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - aiops-net
+      - aiops-external-net
+    depends_on:
+      - node-exporter
+      - mcp
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - aiops-net
+      - aiops-external-net
+    depends_on:
+      - prometheus
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    networks:
+      - aiops-net
+
+  mcp:
+    build: .
+    container_name: mcp
+    ports:
+      - "8080:8080"
+    environment:
+      - GEMINI_API_KEY=TU_API_KEY_DE_GEMINI
+      - PROMETHEUS_URL=http://prometheus:9090
+    networks:
+      - aiops-net
+
+networks:
+  aiops-net:
+    driver: bridge
+  aiops-external-net:
+    external: true
