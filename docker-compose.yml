@@ -42,7 +42,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - GEMINI_API_KEY=TU_API_KEY_DE_GEMINI
+      - GEMINI_API_KEY=
       - PROMETHEUS_URL=http://prometheus:9090
     networks:
       - aiops-net

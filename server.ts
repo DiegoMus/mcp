@@ -17,22 +17,43 @@ register.registerMetric(anomalyGauge);
 
 // --- Función para reducir y explicar la respuesta de Gemini ---
 function extractAnomalyAndExplanation(text: string): { value: number, label: string, explanation: string } {
-  // Busca la línea "Anomalía Detectada: ..." y la interpreta
-  const match = text.match(/Anomalía Detectada:\s*(Sí|No|Potencial)/i);
-  let value = 0, label = "No";
-  if (match) {
-    switch (match[1].toLowerCase()) {
-      case 'sí': value = 1; label = "Sí"; break;
-      case 'potencial': value = 2; label = "Potencial"; break;
-      case 'no': value = 0; label = "No"; break;
+  const textLower = text.toLowerCase();
+  const anchor = "anomalía detectada:";
+  
+  let value = 0;
+  let label = "No";
+
+  // 1. Encontrar la posición de la frase clave
+  const anchorIndex = textLower.indexOf(anchor);
+
+  if (anchorIndex !== -1) {
+    // 2. Tomar un trozo del texto justo después de la frase clave
+    const startIndex = anchorIndex + anchor.length;
+    const snippet = textLower.substring(startIndex, startIndex + 10);
+    
+    // 3. Revisar si el trozo CONTIENE la palabra "sí" o "potencial"
+    if (snippet.includes("sí") || snippet.includes("si")) {
+      value = 1;
+      label = "Sí";
+    } else if (snippet.includes("potencial")) {
+      value = 2;
+      label = "Potencial";
     }
   }
 
-  // Busca la justificación después de "Justificación:"
-  const expMatch = text.match(/Justificación:\s*([^\n]+)/i);
-  let explanation = expMatch ? expMatch[1].trim() : "Sin explicación.";
+  // --- Lógica para la justificación (también simplificada) ---
+  const justificacionAnchor = "justificación:";
+  let explanation = "Sin explicación.";
+  const justificacionIndex = textLower.indexOf(justificacionAnchor);
 
-  // Limita la explicación a 50 palabras
+  if (justificacionIndex !== -1) {
+    const startIndex = justificacionIndex + justificacionAnchor.length;
+    // Tomar el texto hasta el siguiente salto de línea
+    const rawExplanation = text.substring(startIndex);
+    const endOfLineIndex = rawExplanation.indexOf('\n');
+    explanation = (endOfLineIndex !== -1 ? rawExplanation.substring(0, endOfLineIndex) : rawExplanation).trim();
+  }
+
   const words = explanation.split(/\s+/);
   if (words.length > 50) {
     explanation = words.slice(0, 50).join(' ') + '...';
@@ -40,7 +61,6 @@ function extractAnomalyAndExplanation(text: string): { value: number, label: str
 
   return { value, label, explanation };
 }
-
 // --- Tu función createContext y esquema se mantienen igual ---
 const createContext = (contextData: { schema: ZodType, data: any, description: string }) => {
   return {
@@ -77,11 +97,16 @@ interface GeminiResponse {
 const app = express();
 
 app.get('/aiops/check', async (req: Request, res: Response) => {
+  const targetInstance = req.query.instance as string;
+  if (!targetInstance) {
+    return res.status(400).json({ error: "El parámetro 'instance' es requerido." });
+  }
+
   try {
     const queries = {
-      cpuRate: `rate(node_cpu_seconds_total{mode='user'}[5m])`,
-      loadAvg: 'node_load1',
-      memAvailable: 'node_memory_MemAvailable_bytes'
+      cpuRate: `(1 - avg(irate(node_cpu_seconds_total{mode="idle", instance='${targetInstance}'}[1m]))) * 100`,
+      loadAvg: `node_load1{instance='${targetInstance}'}`,
+      memAvailable: `node_memory_MemAvailable_bytes{instance='${targetInstance}'}`
     };
 
     const [cpuRes, loadRes, memRes] = await axios.all([
@@ -135,6 +160,13 @@ app.get('/aiops/check', async (req: Request, res: Response) => {
     );
 
     const analysis = geminiRes.data?.candidates?.[0]?.content?.parts?.[0]?.text || "Análisis no disponible por parte de Gemini.";
+
+    // --- AÑADE ESTA LÍNEA PARA VER EL TEXTO EXACTO ---
+    console.log("--- TEXTO CRUDO DE GEMINI ---");
+    console.log(JSON.stringify(analysis));
+    console.log("----------------------------");
+    // ---
+
 
     // --- REDUCE LA RESPUESTA Y LA EXPLICACIÓN ---
     const { value: anomalyValue, label: anomalyLabel, explanation } = extractAnomalyAndExplanation(analysis);

@@ -12,4 +12,4 @@ scrape_configs:
 
   - job_name: 'VM-VM-Linux'
     static_configs:
-      - targets: ['192.168.0.11:9100']
+      - targets: ['192.168.0.10:9100']
